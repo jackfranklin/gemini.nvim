@@ -1,8 +1,8 @@
-local config = require('gemini.config')
-local prompt = require('gemini.prompt')
-local completion = require('gemini.completion')
-local chat = require('gemini.chat')
-local hint = require('gemini.hint')
+local config = require("gemini.config")
+local prompt = require("gemini.prompt")
+local completion = require("gemini.completion")
+local chat = require("gemini.chat")
+local hint = require("gemini.hint")
 
 local M = {}
 

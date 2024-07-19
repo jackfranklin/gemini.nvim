@@ -1,6 +1,6 @@
-local config = require('gemini.config')
-local util = require('gemini.util')
-local popup = require('plenary.popup')
+local config = require("gemini.config")
+local util = require("gemini.util")
+local popup = require("plenary.popup")
 
 local M = {}
 
@@ -11,15 +11,15 @@ local context = {
 }
 
 M.setup = function(module)
-  vim.api.nvim_create_user_command('GeminiFunctionHint', M.show_function_hints, {
+  vim.api.nvim_create_user_command("GeminiFunctionHint", M.show_function_hints, {
     force = true,
-    desc = 'Google Gemini function explaination',
+    desc = "Google Gemini function explaination",
   })
 
-  context.namespace_id = vim.api.nvim_create_namespace('gemini_hints')
+  context.namespace_id = vim.api.nvim_create_namespace("gemini_hints")
   module.show_quick_hint_text = M.show_quick_hint_text
 
-  vim.api.nvim_set_keymap('n', config.get_config().insert_result_key, '', {
+  vim.api.nvim_set_keymap("n", config.get_config().insert_result_key, "", {
     callback = function()
       M.insert_hint_result()
     end,
@@ -27,7 +27,7 @@ M.setup = function(module)
 end
 
 M.show_function_hints = function()
-  local disabled = os.getenv('DISABLE_GEMINI_INLINE')
+  local disabled = os.getenv("DISABLE_GEMINI_INLINE")
   if disabled then
     return
   end
@@ -37,7 +37,7 @@ M.show_function_hints = function()
     return
   end
 
-  local node = util.find_node_by_type('function')
+  local node = util.find_node_by_type("function")
   if node then
     M.show_quick_hints(node, bufnr)
     return
@@ -49,7 +49,7 @@ M.show_quick_hints = function(node, bufnr)
   local row = node:range()
 
   local mode = vim.api.nvim_get_mode()
-  if mode.mode ~= 'n' then
+  if mode.mode ~= "n" then
     return
   end
 
@@ -59,23 +59,23 @@ M.show_quick_hints = function(node, bufnr)
 
   context.timer = vim.defer_fn(function()
     local code_block = vim.treesitter.get_node_text(node, bufnr)
-    local filetype = vim.api.nvim_get_option_value('filetype', { buf = bufnr })
+    local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
     local prompt = config.get_hints_prompt()
-    prompt = prompt:gsub('{filetype}', filetype)
-    prompt = prompt:gsub('{code_block}', code_block)
+    prompt = prompt:gsub("{filetype}", filetype)
+    prompt = prompt:gsub("{code_block}", code_block)
 
     local options = {
       win_id = win,
       pos = { row + 1, 1 },
-      callback = 'show_quick_hint_text',
+      callback = "show_quick_hint_text",
     }
-    vim.api.nvim_call_function('_gemini_api_async', { options, prompt })
+    vim.api.nvim_call_function("_gemini_api_async", { options, prompt })
   end, config.get_config().hints_delay)
 end
 
 M.show_quick_hint_text = function(params)
   local mode = vim.api.nvim_get_mode()
-  if mode.mode ~= 'n' then
+  if mode.mode ~= "n" then
     return
   end
 
@@ -92,13 +92,13 @@ M.show_quick_hint_text = function(params)
   local options = {
     id = 2,
     virt_lines = {},
-    hl_mode = 'combine',
-    virt_text_pos = 'overlay',
+    hl_mode = "combine",
+    virt_text_pos = "overlay",
     virt_lines_above = true,
   }
 
-  for i, l in pairs(vim.split(content, '\n')) do
-    options.virt_lines[i] = { { l, 'Comment' } }
+  for i, l in pairs(vim.split(content, "\n")) do
+    options.virt_lines[i] = { { l, "Comment" } }
   end
 
   local id = vim.api.nvim_buf_set_extmark(0, context.namespace_id, row - 1, col - 1, options)
@@ -111,12 +111,12 @@ M.show_quick_hint_text = function(params)
     bufnr = bufnr,
   }
 
-  vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI', 'InsertLeavePre' }, {
+  vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI", "InsertLeavePre" }, {
     buffer = bufnr,
     callback = function()
       context.hints = nil
       vim.api.nvim_buf_del_extmark(bufnr, context.namespace_id, id)
-      vim.api.nvim_command('redraw')
+      vim.api.nvim_command("redraw")
     end,
     once = true,
   })
@@ -133,7 +133,7 @@ M.insert_hint_result = function()
   end
 
   local row = context.hints.row - 1
-  local lines = vim.split(context.hints.content, '\n')
+  local lines = vim.split(context.hints.content, "\n")
   vim.api.nvim_buf_set_lines(bufnr, row, row, false, lines)
   context.hints = nil
 end

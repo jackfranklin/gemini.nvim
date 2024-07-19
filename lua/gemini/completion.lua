@@ -1,4 +1,4 @@
-local config = require('gemini.config')
+local config = require("gemini.config")
 
 local M = {}
 
@@ -14,58 +14,44 @@ local context = {
 }
 
 M.setup = function(module)
-  context.namespace_id = vim.api.nvim_create_namespace('gemini_completion')
-
-  vim.api.nvim_create_autocmd('CursorMovedI', {
-    callback = function()
-      pcall(M.handle_cursor_insert)
-    end,
-  })
+  context.namespace_id = vim.api.nvim_create_namespace("gemini_completion")
 
   module.show_completion_result = M.show_completion_result
 
-  vim.api.nvim_set_keymap('i', config.get_config().insert_result_key, '', {
+  vim.api.nvim_set_keymap("i", config.get_config().trigger_completion_key, "", {
+    callback = function()
+      M.gemini_complete()
+    end,
+  })
+
+  vim.api.nvim_set_keymap("i", config.get_config().insert_result_key, "", {
     callback = function()
       M.insert_completion_result()
     end,
   })
 end
 
-M.handle_cursor_insert = function()
-  M.gemini_complete()
-end
-
 M.gemini_complete = function()
-  if context.timer then
-    context.timer:stop()
-  end
+  local bufnr = vim.api.nvim_get_current_buf()
+  local win = vim.api.nvim_get_current_win()
+  local pos = vim.api.nvim_win_get_cursor(win)
 
-  context.timer = vim.defer_fn(function()
-    if vim.fn.mode() ~= 'i' then
-      return
-    end
+  local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
+  local prompt = "Objective: Complete Code at line %d, column %d\n"
+    .. "Context:\n\n```%s\n%s\n```\n\n"
+    .. "Question:\n\nWhat code should be place at line %d, column %d?\n\nAnswer:\n\n"
+  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+  local code = vim.fn.join(lines, "\n")
+  prompt = string.format(prompt, pos[1], pos[2], filetype, code, pos[1], pos[2])
 
-    local bufnr = vim.api.nvim_get_current_buf()
-    local win = vim.api.nvim_get_current_win()
-    local pos = vim.api.nvim_win_get_cursor(win)
-
-    local filetype = vim.api.nvim_get_option_value('filetype', { buf = bufnr })
-    local prompt = 'Objective: Complete Code at line %d, column %d\n'
-        .. 'Context:\n\n```%s\n%s\n```\n\n'
-        .. 'Question:\n\nWhat code should be place at line %d, column %d?\n\nAnswer:\n\n'
-    local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-    local code = vim.fn.join(lines, '\n')
-    prompt = string.format(prompt, pos[1], pos[2], filetype, code, pos[1], pos[2])
-
-    local options = {
-      win_id = win,
-      bufnr = bufnr,
-      pos = pos,
-      callback = 'show_completion_result',
-      extract_code = true,
-    }
-    vim.api.nvim_call_function('_gemini_api_async', { options, prompt })
-  end, config.get_config().instruction_delay)
+  local options = {
+    win_id = win,
+    bufnr = bufnr,
+    pos = pos,
+    callback = "show_completion_result",
+    extract_code = true,
+  }
+  vim.api.nvim_call_function("_gemini_api_async", { options, prompt })
 end
 
 M.show_completion_result = function(params)
@@ -84,7 +70,7 @@ M.show_completion_result = function(params)
     return
   end
 
-  if vim.fn.mode() ~= 'i' then
+  if vim.fn.mode() ~= "i" then
     return
   end
 
@@ -94,15 +80,15 @@ M.show_completion_result = function(params)
     id = 1,
     virt_text = {},
     virt_lines = {},
-    hl_mode = 'combine',
-    virt_text_pos = 'overlay',
+    hl_mode = "combine",
+    virt_text_pos = "overlay",
   }
 
-  for i, l in pairs(vim.split(content, '\n')) do
+  for i, l in pairs(vim.split(content, "\n")) do
     if i == 1 then
-      options.virt_text[1] = { l, 'Comment' }
+      options.virt_text[1] = { l, "Comment" }
     else
-      options.virt_lines[i - 1] = { { l, 'Comment' } }
+      options.virt_lines[i - 1] = { { l, "Comment" } }
     end
   end
   local id = vim.api.nvim_buf_set_extmark(bufnr, context.namespace_id, row - 1, col, options)
@@ -114,12 +100,12 @@ M.show_completion_result = function(params)
     bufnr = bufnr,
   }
 
-  vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI', 'InsertLeavePre' }, {
+  vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI", "InsertLeavePre" }, {
     buffer = bufnr,
     callback = function()
       context.completion = nil
       vim.api.nvim_buf_del_extmark(bufnr, context.namespace_id, id)
-      vim.api.nvim_command('redraw')
+      vim.api.nvim_command("redraw")
     end,
     once = true,
   })
@@ -138,7 +124,7 @@ M.insert_completion_result = function()
   local row = context.completion.row - 1
   local col = context.completion.col
   local first_line = vim.api.nvim_buf_get_lines(0, row, row + 1, false)[1]
-  local lines = vim.split(context.completion.content, '\n')
+  local lines = vim.split(context.completion.content, "\n")
   lines[1] = string.sub(first_line, 1, col) .. lines[1]
   vim.api.nvim_buf_set_lines(bufnr, row, row, false, lines)
   context.completion = nil
